@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: netflix-recommender-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: RATE_LIMIT
+        value: "60/minute"
+  - type: web
+    name: netflix-recommender-ui
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    dockerCommand: streamlit run app/streamlit_app.py --server.address 0.0.0.0 --server.port $PORT --server.headless true
+    envVars:
+      - key: API_BASE_URL
+        sync: false
+      - key: PORT
+        value: "10000"
