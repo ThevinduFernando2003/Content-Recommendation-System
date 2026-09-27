@@ -1,0 +1,66 @@
+# All tuneable paths and model settings. Code reads this file via src/config.py.
+# Do not scatter these numbers through the package.
+
+random_seed: 42
+
+paths:
+  raw_csv: data/raw/netflix_titles.csv
+  interim_dir: data/interim
+  processed_path: data/processed/titles.parquet
+  models_dir: models
+  reports_dir: reports
+  figures_dir: reports/figures
+
+# Repeated in the soup this many times. genre_words keeps space-separated genre
+# text so a cold-start query like "crime drama" can match a collapsed "crimetvshows"
+# catalogue. Set a weight to 0 to drop that field.
+feature_weights:
+  genre: 3
+  genre_words: 1
+  cast: 2
+  director: 2
+  # This extract labels Squid Game and other non-Pakistani titles as Pakistan.
+  # Country is kept at 0 so that error cannot glue unrelated titles together.
+  # The ablation in reports/evaluation.md compares this with country weight 1.
+  country: 0
+  type: 1
+  rating: 1
+  description: 1
+
+vectorizer:
+  # tfidf or count
+  kind: tfidf
+  ngram_range: [1, 2]
+  min_df: 2
+  max_features: 50000
+  sublinear_tf: true
+
+recommender:
+  default_n: 10
+  cast_cap: 3
+  fuzzy_score_threshold: 90
+  fuzzy_ambiguity_gap: 5
+  fuzzy_suggestion_limit: 5
+  franchise_prefix_chars: 10
+  franchise_token_set_ratio: 85
+  # How many raw neighbours to consider before franchise / filter truncation.
+  candidate_pool: 400
+  # Cosine at or above this, with no shared person, is a genre-token tie.
+  saturated_similarity: 0.99
+  # Free-text matches below this are labelled weak. They are not refusals.
+  weak_text_similarity: 0.35
+
+evaluation:
+  ks: [5, 10, 20]
+  bootstrap_samples: 1000
+  latency_queries: 1000
+  latency_budget_ms: 200
+  qualitative_titles:
+    - Breaking Bad
+    - The Irishman
+    - Stranger Things
+    - Kota Factory
+    - Our Planet
+    - Klaus
+    - ROMA
+    - "Hasan Minhaj: Homecoming King"
