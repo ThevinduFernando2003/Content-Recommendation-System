@@ -1,0 +1,40 @@
+services:
+  api:
+    build: .
+    environment:
+      PORT: "8000"
+      CORS_ORIGINS: "http://localhost:8501,http://127.0.0.1:8501"
+      RATE_LIMIT: "60/minute"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+  ui:
+    build: .
+    command:
+      [
+        "sh",
+        "-c",
+        "streamlit run app/streamlit_app.py --server.address 0.0.0.0 --server.port $${PORT:-8501} --server.headless true",
+      ]
+    environment:
+      PORT: "8501"
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    # The image HEALTHCHECK hits the API. This container is Streamlit.
+    healthcheck:
+      disable: true
