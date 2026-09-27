@@ -1,0 +1,62 @@
+show_id,type,title,director,cast,country,date_added,release_year,rating,duration,listed_in,description
+s1,Movie,Dick Johnson Is Dead,Martin Scorsese,"Tom Hanks, Tom Cruise, Amy Adams",United States,"September 25, 2021",2020,PG-13,90 min,Documentaries,A filmmaker stages his death.
+s2,Movie,No Director Film,,"Amy Adams, Emma Stone, Tom Hanks",Canada,9/1/2020,2019,PG,100 min,Comedies,A film with no director.
+s3,Movie,No Cast Film,Jane Doe,,Mexico,9/2/2020,2018,PG-13,95 min,Dramas,A film with no cast.
+s4,Movie,No Country Film,Jane Doe,"Amy Adams, Emma Stone, Tom Hanks",,9/3/2020,2017,R,110 min,Dramas,A film with no country.
+s5,Movie,Unrated Film,Jane Doe,"Amy Adams, Emma Stone, Tom Hanks",United States,9/4/2020,2016,,80 min,Comedies,No rating was provided.
+s6,Movie,Shifted Row,Jane Doe,"Amy Adams, Emma Stone, Tom Hanks",United States,9/5/2020,2015,74 min,,Action & Adventure,Duration was stored in the rating column.
+s7,TV Show,Two Seasons Show,Jane Doe,"Amy Adams, Emma Stone, Tom Hanks",United States,9/6/2020,2014,TV-MA,2 Seasons,TV Dramas,A television show.
+s8,Movie,Global Film,Jane Doe,"Amy Adams, Emma Stone, Tom Hanks","United States, India",9/7/2020,2013,PG-13,120 min,"Dramas, Independent Movies",Shot in two countries.
+s9,Movie,Genre Salad,Jane Doe,"Amy Adams, Emma Stone, Tom Hanks",India,9/8/2020,2012,TV-14,130 min,"Dramas, Comedies, International Movies, Independent Movies, Romantic Movies",Five genres on one row.
+s10,Movie,Shadow City,Ava Morales,"Lena Ortiz, Samir Khan, Noah Blake",Mexico,9/9/2020,2019,TV-MA,50 min,Documentaries,A movie that shares its title with a show.
+s11,TV Show,Shadow City,Someone Else,"Other Person, Second Person, Third Person",Brazil,9/10/2020,2021,TV-14,1 Season,Docuseries,A show that shares its title with a movie.
+s12,Movie,Amélie,Jean Pierre Jeunet,"Audrey Tautou, Mathieu Kassovitz, Rufus",France,9/11/2001,2001,R,122 min,"Comedies, International Movies, Romantic Movies",A Paris romance.
+s13,Movie,"Hello, Goodbye",Jane Doe,"Amy Adams, Emma Stone, Tom Hanks",France,9/12/2011,2011,PG,101 min,"Romantic Movies, Comedies",A title that contains a comma.
+s14,TV Show,City of Shadows,Ava Morales,"Lena Ortiz, Samir Khan, Noah Blake, Extra Person",Mexico,9/13/2018,2018,TV-MA,3 Seasons,"Crime TV Shows, TV Dramas, International TV Shows",Detectives chase a case through the city.
+s15,TV Show,Glass Alibi,Ava Morales,"Lena Ortiz, Samir Khan, Priya Shah",Mexico,9/14/2019,2019,TV-MA,2 Seasons,"Crime TV Shows, TV Dramas, International TV Shows",Detectives chase another case through the city.
+s16,Movie,Panda Legend,Chris Maker,"Jack Black, Angelina Jolie, Dustin Hoffman",United States,9/15/2008,2008,PG,92 min,"Children & Family Movies, Comedies",A panda adventure.
+s17,Movie,Panda Legend 2,Chris Maker,"Jack Black, Angelina Jolie, Dustin Hoffman",United States,9/16/2011,2011,PG,90 min,"Children & Family Movies, Comedies",The panda adventure continues.
+s18,Movie,Sentinel Director,Not Given,"Amy Adams, Emma Stone, Tom Hanks",Not Given,9/18/2010,2010,TV-PG,88 min,Documentaries,Director and country are the sentinel token.
+s19,Movie,Mojibake Director,Alexis AlmstrÃ¶m,"Amy Adams, Emma Stone, Tom Hanks",France,9/19/2016,2016,PG-13,99 min,Dramas,Director name was mis-decoded.
+s20,Movie,Unknown Person,Unknown,"Amy Adams, Emma Stone, Tom Hanks",Canada,9/20/2014,2014,PG,87 min,Comedies,The director cell is a sentinel.
+s21,TV Show,Border Midnight,Luis Ortega,"Diego Luna, Gael Garcia, Salma Hayek",Mexico,9/21/2017,2017,TV-MA,1 Season,"Crime TV Shows, TV Dramas, International TV Shows",A different crime show.
+s4523,Movie,2026-07-22 00:00:00,Paul Greengrass,"Actor One, Actor Two, Actor Three",Norway,2018-10-10,2018,R,144 min,"Dramas, Thrillers",Excel stored this title as a datetime.
+s30,Movie,First Copy,Keeper Director,"Amy Adams, Emma Stone, Tom Hanks",Spain,9/30/2015,2015,PG,91 min,Stand-Up Comedy,The row that should survive deduplication.
+s30,Movie,Second Copy,Dropped Director,"Amy Adams, Emma Stone, Tom Hanks",Spain,9/30/2015,2016,PG,91 min,Stand-Up Comedy,Duplicate show_id that must be dropped.
+s22,TV Show,Filler Title 22,Director 22,"Actor 22a, Actor 22b, Actor 22c",Canada,1/23/2018,2012,TV-14,1 Season,TV Dramas,Filler synopsis 22.
+s23,Movie,Filler Title 23,Director 23,"Actor 23a, Actor 23b, Actor 23c",Japan,1/24/2018,2013,TV-14,100 min,Kids' TV,Filler synopsis 23.
+s24,TV Show,Filler Title 24,Director 24,"Actor 24a, Actor 24b, Actor 24c",Canada,1/25/2018,2014,TV-14,1 Season,Reality TV,Filler synopsis 24.
+s25,Movie,Filler Title 25,Director 25,"Actor 25a, Actor 25b, Actor 25c",Japan,1/26/2018,2015,TV-14,100 min,Music & Musicals,Filler synopsis 25.
+s26,TV Show,Filler Title 26,Director 26,"Actor 26a, Actor 26b, Actor 26c",Canada,1/27/2018,2016,TV-14,1 Season,TV Dramas,Filler synopsis 26.
+s27,Movie,Filler Title 27,Director 27,"Actor 27a, Actor 27b, Actor 27c",Japan,1/28/2018,2017,TV-14,100 min,Romantic Movies,Filler synopsis 27.
+s28,TV Show,Filler Title 28,Director 28,"Actor 28a, Actor 28b, Actor 28c",Canada,1/1/2018,2018,TV-14,1 Season,TV Comedies,Filler synopsis 28.
+s29,Movie,Filler Title 29,Director 29,"Actor 29a, Actor 29b, Actor 29c",Japan,1/2/2018,2019,TV-14,100 min,Sports Movies,Filler synopsis 29.
+s31,Movie,Filler Title 31,Director 31,"Actor 31a, Actor 31b, Actor 31c",Japan,1/4/2018,1991,TV-14,100 min,Horror Movies,Filler synopsis 31.
+s32,TV Show,Filler Title 32,Director 32,"Actor 32a, Actor 32b, Actor 32c",Canada,1/5/2018,1992,TV-14,1 Season,TV Comedies,Filler synopsis 32.
+s33,Movie,Filler Title 33,Director 33,"Actor 33a, Actor 33b, Actor 33c",Japan,1/6/2018,1993,TV-14,100 min,Kids' TV,Filler synopsis 33.
+s34,TV Show,Filler Title 34,Director 34,"Actor 34a, Actor 34b, Actor 34c",Canada,1/7/2018,1994,TV-14,1 Season,Reality TV,Filler synopsis 34.
+s35,Movie,Filler Title 35,Director 35,"Actor 35a, Actor 35b, Actor 35c",Japan,1/8/2018,1995,TV-14,100 min,Music & Musicals,Filler synopsis 35.
+s36,TV Show,Filler Title 36,Director 36,"Actor 36a, Actor 36b, Actor 36c",Canada,1/9/2018,1996,TV-14,1 Season,TV Comedies,Filler synopsis 36.
+s37,Movie,Filler Title 37,Director 37,"Actor 37a, Actor 37b, Actor 37c",Japan,1/10/2018,1997,TV-14,100 min,Romantic Movies,Filler synopsis 37.
+s38,TV Show,Filler Title 38,Director 38,"Actor 38a, Actor 38b, Actor 38c",Canada,1/11/2018,1998,TV-14,1 Season,TV Dramas,Filler synopsis 38.
+s39,Movie,Filler Title 39,Director 39,"Actor 39a, Actor 39b, Actor 39c",Japan,1/12/2018,1999,TV-14,100 min,Sports Movies,Filler synopsis 39.
+s40,TV Show,Filler Title 40,Director 40,"Actor 40a, Actor 40b, Actor 40c",Canada,1/13/2018,2000,TV-14,1 Season,TV Comedies,Filler synopsis 40.
+s41,Movie,Filler Title 41,Director 41,"Actor 41a, Actor 41b, Actor 41c",Japan,1/14/2018,2001,TV-14,100 min,Horror Movies,Filler synopsis 41.
+s42,TV Show,Filler Title 42,Director 42,"Actor 42a, Actor 42b, Actor 42c",Canada,1/15/2018,2002,TV-14,1 Season,TV Dramas,Filler synopsis 42.
+s43,Movie,Filler Title 43,Director 43,"Actor 43a, Actor 43b, Actor 43c",Japan,1/16/2018,2003,TV-14,100 min,Kids' TV,Filler synopsis 43.
+s44,TV Show,Filler Title 44,Director 44,"Actor 44a, Actor 44b, Actor 44c",Canada,1/17/2018,2004,TV-14,1 Season,Reality TV,Filler synopsis 44.
+s45,Movie,Filler Title 45,Director 45,"Actor 45a, Actor 45b, Actor 45c",Japan,1/18/2018,2005,TV-14,100 min,Music & Musicals,Filler synopsis 45.
+s46,TV Show,Filler Title 46,Director 46,"Actor 46a, Actor 46b, Actor 46c",Canada,1/19/2018,2006,TV-14,1 Season,TV Dramas,Filler synopsis 46.
+s47,Movie,Filler Title 47,Director 47,"Actor 47a, Actor 47b, Actor 47c",Japan,1/20/2018,2007,TV-14,100 min,Romantic Movies,Filler synopsis 47.
+s48,TV Show,Filler Title 48,Director 48,"Actor 48a, Actor 48b, Actor 48c",Canada,1/21/2018,2008,TV-14,1 Season,TV Comedies,Filler synopsis 48.
+s49,Movie,Filler Title 49,Director 49,"Actor 49a, Actor 49b, Actor 49c",Japan,1/22/2018,2009,TV-14,100 min,Sports Movies,Filler synopsis 49.
+s50,TV Show,Filler Title 50,Director 50,"Actor 50a, Actor 50b, Actor 50c",Canada,1/23/2018,2010,TV-14,1 Season,TV Dramas,Filler synopsis 50.
+s51,Movie,Filler Title 51,Director 51,"Actor 51a, Actor 51b, Actor 51c",Japan,1/24/2018,2011,TV-14,100 min,Horror Movies,Filler synopsis 51.
+s52,TV Show,Filler Title 52,Director 52,"Actor 52a, Actor 52b, Actor 52c",Canada,1/25/2018,2012,TV-14,1 Season,TV Comedies,Filler synopsis 52.
+s53,Movie,Filler Title 53,Director 53,"Actor 53a, Actor 53b, Actor 53c",Japan,1/26/2018,2013,TV-14,100 min,Kids' TV,Filler synopsis 53.
+s54,TV Show,Filler Title 54,Director 54,"Actor 54a, Actor 54b, Actor 54c",Canada,1/27/2018,2014,TV-14,1 Season,Reality TV,Filler synopsis 54.
+s55,Movie,Filler Title 55,Director 55,"Actor 55a, Actor 55b, Actor 55c",Japan,1/28/2018,2015,TV-14,100 min,Music & Musicals,Filler synopsis 55.
+s56,TV Show,Filler Title 56,Director 56,"Actor 56a, Actor 56b, Actor 56c",Canada,1/1/2018,2016,TV-14,1 Season,TV Comedies,Filler synopsis 56.
+s57,Movie,Filler Title 57,Director 57,"Actor 57a, Actor 57b, Actor 57c",Japan,1/2/2018,2017,TV-14,100 min,Romantic Movies,Filler synopsis 57.
+s58,TV Show,Filler Title 58,Director 58,"Actor 58a, Actor 58b, Actor 58c",Canada,1/3/2018,2018,TV-14,1 Season,TV Dramas,Filler synopsis 58.
+s59,Movie,Filler Title 59,Director 59,"Actor 59a, Actor 59b, Actor 59c",Japan,1/4/2018,2019,TV-14,100 min,Sports Movies,Filler synopsis 59.
