@@ -1,3 +1,5 @@
+[![CI](https://github.com/ThevinduFernando2003/Content-Recommendation-System/actions/workflows/ci.yml/badge.svg)](https://github.com/ThevinduFernando2003/Content-Recommendation-System/actions/workflows/ci.yml)
+
 # Netflix content recommender
 
 A content-based recommender over a Netflix movies and TV catalogue. You give it a title, or a short description of taste, and it returns similar titles with a similarity score and a one-line reason. There is no viewing history in this dataset, so it does not learn from what people watched, and it does not report an accuracy.
