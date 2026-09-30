@@ -50,6 +50,24 @@ def test_recommend_shape_and_fuzzy(recommender: Recommender) -> None:
         assert body.results[0].reason
 
 
+def test_rating_filter_is_exact(recommender: Recommender) -> None:
+    with _client(recommender) as client:
+        response = client.post(
+            "/recommend",
+            json={
+                "title": "Panda Legend",
+                "n": 10,
+                "rating": "PG",
+                "exclude_same_franchise": False,
+            },
+        )
+        assert response.status_code == 200
+        results = response.json()["results"]
+        assert results
+        assert all(item["rating"] == "PG" for item in results)
+        assert all(item["description"] for item in results)
+
+
 def test_unknown_title_is_404_with_suggestions(recommender: Recommender) -> None:
     with _client(recommender) as client:
         response = client.post("/recommend", json={"title": "zzzznotitle"})

@@ -28,6 +28,7 @@ class RecommendRequest(BaseModel):
     n: int = Field(default=10, ge=1, le=50)
     content_type: Literal["Movie", "TV Show"] | None = None
     min_release_year: int | None = Field(default=None, ge=1900, le=2100)
+    rating: str | None = Field(default=None, max_length=20)
     exclude_same_franchise: bool = True
 
 
@@ -40,6 +41,7 @@ class TextRecommendRequest(BaseModel):
 
     query: str = Field(min_length=1, max_length=1000)
     n: int = Field(default=10, ge=1, le=50)
+    rating: str | None = Field(default=None, max_length=20)
 
 
 class RecommendationModel(BaseModel):
@@ -48,6 +50,7 @@ class RecommendationModel(BaseModel):
     type: str
     release_year: int
     rating: str | None
+    description: str = ""
     genres: list[str]
     similarity: float = Field(ge=0.0, le=1.0)
     reason: str

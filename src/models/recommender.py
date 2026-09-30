@@ -106,6 +106,7 @@ class Recommendation:
     type: str
     release_year: int
     rating: str | None
+    description: str
     genres: list[str]
     similarity: float
     reason: str
@@ -255,6 +256,7 @@ class Recommender:
         n: int | None = None,
         content_type: ContentType | None = None,
         min_release_year: int | None = None,
+        rating: str | None = None,
         exclude_same_franchise: bool = True,
     ) -> tuple[ResolvedTitle, list[Recommendation]]:
         """Return the top ``n`` neighbours for a catalogue title."""
@@ -265,12 +267,14 @@ class Recommender:
         if matrix is None:
             raise RuntimeError("Recommender is not fitted. Run `make train` first.")
         scores = self._scores_from_vector(matrix[resolved.index])
-        self._apply_filters(scores, resolved.index, content_type, min_release_year)
+        self._apply_filters(scores, resolved.index, content_type, min_release_year, rating)
         chosen = self._take(scores, resolved.index, limit, exclude_same_franchise)
         results = [self._to_recommendation(resolved.index, index, score) for index, score in chosen]
         return resolved, results
 
-    def recommend_from_text(self, query: str, n: int | None = None) -> list[Recommendation]:
+    def recommend_from_text(
+        self, query: str, n: int | None = None, rating: str | None = None
+    ) -> list[Recommendation]:
         """Cold start: transform free text with the fitted vectoriser and query the index."""
         self._require_fitted()
         folded = fold_text(query)
@@ -280,7 +284,7 @@ class Recommender:
             )
         title_hits = self._norm_to_indices.get(folded, [])
         if len(title_hits) == 1:
-            _resolved, titled = self.recommend(str(self.titles[title_hits[0]]), n=n)
+            _resolved, titled = self.recommend(str(self.titles[title_hits[0]]), n=n, rating=rating)
             return titled
         if len(title_hits) > 1:
             raise EmptyQueryError(
@@ -295,6 +299,7 @@ class Recommender:
             )
         limit = self.config.recommender.default_n if n is None else n
         scores = self._scores_from_vector(vector)
+        self._mask_rating(scores, rating)
         order = np.argsort(-scores, kind="mergesort")
         results: list[Recommendation] = []
         for index in order:
@@ -481,12 +486,21 @@ class Recommender:
         query_index: int,
         content_type: ContentType | None,
         min_release_year: int | None,
+        rating: str | None = None,
     ) -> None:
         scores[self.same_title_indices[query_index]] = -1.0
         if content_type is not None:
             scores[self.types != content_type] = -1.0
         if min_release_year is not None:
             scores[self.years < min_release_year] = -1.0
+        self._mask_rating(scores, rating)
+
+    def _mask_rating(self, scores: np.ndarray, rating: str | None) -> None:
+        wanted = (rating or "").strip().casefold()
+        if not wanted:
+            return
+        keep = np.array([(item or "").casefold() == wanted for item in self.ratings])
+        scores[~keep] = -1.0
 
     def _take(
         self,
@@ -685,6 +699,7 @@ class Recommender:
             type=str(self.types[index]),
             release_year=int(self.years[index]),
             rating=self.ratings[index],
+            description=self.descriptions[index],
             genres=list(self.genres[index]),
             similarity=similarity,
             reason=reason,

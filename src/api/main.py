@@ -97,6 +97,7 @@ def _to_model(item: Recommendation) -> RecommendationModel:
         type=item.type,
         release_year=item.release_year,
         rating=item.rating,
+        description=item.description,
         genres=item.genres,
         similarity=item.similarity,
         reason=item.reason,
@@ -271,6 +272,7 @@ def create_app(recommender: Recommender | None = None) -> FastAPI:
             n=body.n,
             content_type=body.content_type,
             min_release_year=body.min_release_year,
+            rating=body.rating,
             exclude_same_franchise=body.exclude_same_franchise,
         )
         return RecommendResponse(
@@ -294,7 +296,7 @@ def create_app(recommender: Recommender | None = None) -> FastAPI:
         model: Recommender = Depends(get_recommender),
     ) -> TextRecommendResponse:
         started = time.perf_counter()
-        results = model.recommend_from_text(body.query, n=body.n)
+        results = model.recommend_from_text(body.query, n=body.n, rating=body.rating)
         return TextRecommendResponse(
             query=body.query,
             results=[_to_model(item) for item in results],

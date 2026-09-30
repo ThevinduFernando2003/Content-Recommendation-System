@@ -11,7 +11,7 @@ import httpx
 import plotly.graph_objects as go
 import streamlit as st
 
-from app.posters import lookup_poster
+from app.posters import lookup_poster, lookup_synopsis
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000").rstrip("/")
 ACCENT = "#E50914"
@@ -39,6 +39,22 @@ MOODS = [
     "stand-up",
 ]
 QUICK_TITLES = ["Breaking Bad", "Stranger Things", "The Irishman"]
+RATING_GUIDE = {
+    "G": "General audiences. Suitable for all ages.",
+    "PG": "Parental guidance suggested. Some material may not suit young children.",
+    "PG-13": "Parents strongly cautioned. Some material may be inappropriate under 13.",
+    "R": "Restricted. Under 17 needs a parent or adult guardian.",
+    "NC-17": "Adults only. No one 17 and under.",
+    "NR": "Not rated by the film board.",
+    "UR": "Unrated. No official rating was assigned.",
+    "TV-Y": "Appropriate for all children.",
+    "TV-Y7": "Directed to children age 7 and above.",
+    "TV-Y7-FV": "Directed to children age 7 and above, with fantasy violence.",
+    "TV-G": "General audience. Most parents would find this suitable for all ages.",
+    "TV-PG": "Parental guidance suggested for younger children.",
+    "TV-14": "Parents strongly cautioned. May be unsuitable under 14.",
+    "TV-MA": "Mature audience only. May be unsuitable for ages 17 and under.",
+}
 
 st.set_page_config(page_title="Watch next", layout="wide", initial_sidebar_state="collapsed")
 
@@ -140,6 +156,21 @@ def _poster(title: str, content_type: str) -> str:
     return lookup_poster(title, content_type or None) or ""
 
 
+@st.cache_data(ttl=60 * 60 * 24, show_spinner=False)
+def _synopsis(title: str, content_type: str) -> str:
+    return lookup_synopsis(title, content_type or None) or ""
+
+
+def _rating_choice(key: str) -> str | None:
+    choice = st.selectbox("Rating", ["Any", *RATING_GUIDE], key=key)
+    st.markdown("**What the ratings mean**")
+    for code, meaning in RATING_GUIDE.items():
+        st.caption(f"{code}: {meaning}")
+    if choice == "Any":
+        return None
+    return str(choice)
+
+
 def _warm_posters(results: list[dict]) -> None:
     pairs = [(str(item.get("title") or ""), str(item.get("type") or "")) for item in results]
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -201,15 +232,22 @@ def _card(item: dict) -> None:
         f'<p class="card-meta">{html.escape(content_type)} · {year} · {html.escape(str(rating))}</p>',
         unsafe_allow_html=True,
     )
+    meaning = RATING_GUIDE.get(str(rating))
+    if meaning:
+        st.caption(meaning)
     genres = item.get("genres") or []
     if genres:
         pills = "".join(
             f'<span class="pill">{html.escape(str(genre))}</span>' for genre in genres[:3]
         )
         st.markdown(pills, unsafe_allow_html=True)
+    blurb = str(item.get("description") or "").strip() or _synopsis(title, content_type)
+    if blurb:
+        st.markdown(f'<p class="reason">{html.escape(blurb)}</p>', unsafe_allow_html=True)
     reason = str(item.get("reason") or "")
     if reason:
-        st.markdown(f'<p class="reason">{html.escape(reason)}</p>', unsafe_allow_html=True)
+        with st.expander("See more"):
+            st.write(reason)
 
 
 def _render_results(payload: dict, heading: str) -> None:
@@ -232,8 +270,7 @@ def _render_results(payload: dict, heading: str) -> None:
             with column:
                 _card(item)
     st.markdown(
-        '<p class="fine">Artwork is loaded from TVMaze and Wikipedia when a still exists. '
-        "Netflix does not offer a free poster API. A coloured card means no picture was found. "
+        '<p class="fine">A coloured card means no picture was found. '
         "Match % is cosine similarity, not a personal taste score.</p>",
         unsafe_allow_html=True,
     )
@@ -254,7 +291,7 @@ def _recommend_tab() -> None:
     query = st.text_input(
         "Search the catalogue",
         key="catalogue_query",
-        placeholder="Try break bad, or a close spelling",
+        placeholder="Type a show or movie",
     )
     matches: list[dict] = []
     if query.strip():
@@ -278,7 +315,7 @@ def _recommend_tab() -> None:
         "Matching titles",
         labels,
         index=0 if labels else None,
-        placeholder="Type a title above",
+        placeholder="Type a show or movie",
     )
     selected = matches[labels.index(chosen)]["title"] if chosen and labels else query
 
@@ -292,6 +329,7 @@ def _recommend_tab() -> None:
             min_year = st.slider("Released in or after", min_value=1925, max_value=2021, value=1925)
         with col_flag:
             exclude = st.toggle("Hide sequels and spin-offs", value=True)
+        rating = _rating_choice("recommend-rating")
 
     run = st.button("Recommend", type="primary", disabled=not str(selected).strip())
     auto = st.session_state.pop("run_recommend", False)
@@ -301,6 +339,7 @@ def _recommend_tab() -> None:
             "n": n,
             "content_type": None if content_type == "Any" else content_type,
             "min_release_year": None if min_year <= 1925 else min_year,
+            "rating": rating,
             "exclude_same_franchise": exclude,
         }
         with st.spinner("Finding similar titles..."):
@@ -361,12 +400,16 @@ def _taste_tab() -> None:
         "Your description",
         key="taste",
         height=80,
-        placeholder="crime drama, or a mood from the list",
+        placeholder="Type a mood",
     )
     n = st.slider("How many", min_value=1, max_value=20, value=10, key="taste-n")
+    with st.expander("Filters", expanded=False):
+        taste_rating = _rating_choice("taste-rating")
     if st.button("Find titles", type="primary", disabled=not str(text).strip()):
         with st.spinner("Matching that description..."):
-            response = _request("POST", "/recommend/text", {"query": text, "n": n})
+            response = _request(
+                "POST", "/recommend/text", {"query": text, "n": n, "rating": taste_rating}
+            )
         if response is None:
             return
         if response.status_code != 200:

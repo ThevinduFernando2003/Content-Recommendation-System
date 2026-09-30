@@ -69,6 +69,16 @@ def test_ambiguous_title_raises_with_suggestions(recommender: Recommender) -> No
     assert any("Movie" in suggestion for suggestion in caught.value.suggestions)
 
 
+def test_rating_filter_and_catalogue_description(recommender: Recommender) -> None:
+    _resolved, results = recommender.recommend(
+        "Panda Legend", n=10, rating="PG", exclude_same_franchise=False
+    )
+    assert results
+    assert all(item.rating == "PG" for item in results)
+    sequel = next(item for item in results if item.title == "Panda Legend 2")
+    assert "panda" in sequel.description.casefold()
+
+
 def test_fuzzy_typo_resolves(recommender: Recommender) -> None:
     resolved, results = recommender.recommend("city of shadws", n=3, exclude_same_franchise=False)
     assert resolved.title == "City of Shadows"
