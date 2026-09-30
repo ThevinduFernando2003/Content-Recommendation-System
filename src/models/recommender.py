@@ -26,9 +26,65 @@ from src.features.vectorize import fit_matrix, transform_query
 logger = logging.getLogger(__name__)
 
 ContentType = Literal["Movie", "TV Show"]
+_TOKEN_TYPO_RATIO = 80.0
+_NEAR_PARTIAL_CAP = 89.0
+_EXTRA_TOKEN_PENALTY = 6.0
+_SEARCH_SCORE_FLOOR = 80.0
+_PREFIX_REST = frozenset({"s", "es", "ing", "ed"})
+_MOOD_ALIASES = {"romance": "romantic", "romances": "romantic"}
 _CHOICE_RE = re.compile(
     r"^(?P<title>.*) \[(?P<type>Movie|TV Show), (?P<year>\d{4})(?: \| (?P<show_id>s\d+))?\]$"
 )
+
+
+def _token_aligns(query_token: str, title_token: str) -> bool:
+    """True when a query token is the title token, a typo, or a shortened prefix.
+
+    ``break`` aligns with ``breaking`` (the rest is ``ing``). ``break`` does not
+    align with ``breakfast``. Tokens shorter than 3 characters must match exactly,
+    which the caller checks before this helper.
+    """
+    if query_token == title_token:
+        return True
+    if len(query_token) < 3 or len(title_token) < 3:
+        return False
+    if float(fuzz.ratio(query_token, title_token)) >= _TOKEN_TYPO_RATIO:
+        return True
+    if title_token.startswith(query_token):
+        rest = title_token[len(query_token) :]
+        return rest in _PREFIX_REST or len(query_token) / len(title_token) >= 0.8
+    return False
+
+
+def _near_title_score(query: str, choice: str, **_kwargs: object) -> float:
+    """Rank a catalogue title against a typed query.
+
+    RapidFuzz passes already-processed strings. When every query token aligns,
+    in order, with a title token, the score is 100 minus 6 points for each extra
+    title token. A partial overlap is capped at 89 so a short title such as
+    ``Break`` cannot outrank ``Breaking Bad`` for the query ``break bad``.
+    """
+    query_tokens = query.split()
+    choice_tokens = choice.split()
+    if not query_tokens or not choice_tokens:
+        return 0.0
+    cursor = 0
+    for token in query_tokens:
+        found = False
+        while cursor < len(choice_tokens):
+            current = choice_tokens[cursor]
+            cursor += 1
+            if len(token) < 3:
+                aligned = current == token
+            else:
+                aligned = _token_aligns(token, current)
+            if aligned:
+                found = True
+                break
+        if not found:
+            return min(float(fuzz.WRatio(query, choice)), _NEAR_PARTIAL_CAP)
+    extra = max(0, len(choice_tokens) - len(query_tokens))
+    return 100.0 - extra * _EXTRA_TOKEN_PENALTY
 
 
 class TitleNotFoundError(LookupError):
@@ -283,6 +339,26 @@ class Recommender:
             elif needle in folded:
                 contains.append(index)
         chosen = (starts + contains)[:limit]
+        if len(chosen) >= limit:
+            return [self.brief(index) for index in chosen]
+        seen = set(chosen)
+        near = process.extract(
+            query,
+            list(dict.fromkeys(str(item) for item in self.titles)),
+            scorer=_near_title_score,
+            processor=default_process,
+            limit=limit,
+        )
+        for title, score, _idx in near:
+            if float(score) < _SEARCH_SCORE_FLOOR:
+                continue
+            for index in self._norm_to_indices.get(normalise_title(str(title)), []):
+                if index in seen:
+                    continue
+                chosen.append(index)
+                seen.add(index)
+                if len(chosen) >= limit:
+                    return [self.brief(item) for item in chosen]
         return [self.brief(index) for index in chosen]
 
     def get_title(self, show_id: str) -> dict[str, Any] | None:
@@ -509,7 +585,7 @@ class Recommender:
         matches = process.extract(
             query,
             list(dict.fromkeys(str(item) for item in self.titles)),
-            scorer=fuzz.WRatio,
+            scorer=_near_title_score,
             processor=default_process,
             limit=self.config.recommender.fuzzy_suggestion_limit,
         )
@@ -692,7 +768,8 @@ class Recommender:
         extra: list[str] = []
         genre_words = self._genre_word_set()
         rewritten: list[str] = []
-        for token in original:
+        for raw in original:
+            token = _MOOD_ALIASES.get(raw, raw)
             plurals = {token + "s", token + "es"}
             if token.endswith("y") and len(token) > 4:
                 plurals.add(token[:-1] + "ies")

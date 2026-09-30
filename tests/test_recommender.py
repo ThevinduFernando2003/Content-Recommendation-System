@@ -4,10 +4,17 @@ import pandas as pd
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from rapidfuzz.utils import default_process
 
 from src.config import load_config
+from src.data.clean import clean_frame
 from src.features.text import normalise_title
-from src.models.recommender import EmptyQueryError, Recommender, TitleNotFoundError
+from src.models.recommender import (
+    EmptyQueryError,
+    Recommender,
+    TitleNotFoundError,
+    _near_title_score,
+)
 
 
 def test_does_not_recommend_itself(recommender: Recommender) -> None:
@@ -67,6 +74,83 @@ def test_fuzzy_typo_resolves(recommender: Recommender) -> None:
     assert resolved.title == "City of Shadows"
     assert resolved.resolved_from == "city of shadws"
     assert results
+
+
+def test_romance_mood_uses_the_catalogue_word() -> None:
+    rows = []
+    for show_id, title, listed_in in (
+        ("s1", "Romantic Night", "Romantic Movies"),
+        ("s2", "Second Romance", "Romantic Movies"),
+        ("s3", "Plain Drama", "Dramas"),
+        ("s4", "Plain Comedy", "Comedies"),
+    ):
+        rows.append(
+            {
+                "show_id": show_id,
+                "type": "Movie",
+                "title": title,
+                "director": "Jane Doe",
+                "cast": "Amy Adams",
+                "country": "United States",
+                "date_added": "September 25, 2021",
+                "release_year": 2019,
+                "rating": "PG-13",
+                "duration": "100 min",
+                "listed_in": listed_in,
+                "description": "A catalogue row for a mood query.",
+            }
+        )
+    model = Recommender(load_config()).fit(clean_frame(pd.DataFrame(rows)))
+    assert model._expand_query("romance") == "romantic"
+    results = model.recommend_from_text("romance", n=2)
+    assert results
+    assert {item.title for item in results} <= {"Romantic Night", "Second Romance"}
+
+
+def test_shortened_title_prefers_the_full_name() -> None:
+    query = default_process("break bad")
+    full = _near_title_score(query, default_process("Breaking Bad"))
+    short = _near_title_score(query, default_process("Break"))
+    longer = _near_title_score(query, default_process("El Camino: A Breaking Bad Movie"))
+    assert full >= 90
+    assert full > short
+    assert full > longer
+    assert short < 90
+
+
+def test_shortened_title_resolves_and_search_lists_it() -> None:
+    rows = []
+    for show_id, content_type, title, listed_in, duration in (
+        ("s1", "TV Show", "Breaking Bad", "Crime TV Shows, TV Dramas", "5 Seasons"),
+        ("s2", "Movie", "Break", "Dramas", "90 min"),
+        ("s3", "Movie", "El Camino: A Breaking Bad Movie", "Dramas", "122 min"),
+        ("s4", "Movie", "Glass Alibi", "Dramas", "100 min"),
+    ):
+        rows.append(
+            {
+                "show_id": show_id,
+                "type": content_type,
+                "title": title,
+                "director": "Jane Doe",
+                "cast": "Amy Adams",
+                "country": "United States",
+                "date_added": "September 25, 2021",
+                "release_year": 2013,
+                "rating": "TV-MA",
+                "duration": duration,
+                "listed_in": listed_in,
+                "description": "A catalogue row for near-title lookup.",
+            }
+        )
+    model = Recommender(load_config()).fit(clean_frame(pd.DataFrame(rows)))
+    resolved, results = model.recommend("break bad", n=2)
+    assert resolved.title == "Breaking Bad"
+    assert resolved.resolved_from == "break bad"
+    assert results
+    assert all(item.title != "Breaking Bad" for item in results)
+    hits = model.search_titles("break bad", limit=5)
+    assert hits
+    assert hits[0]["title"] == "Breaking Bad"
 
 
 def test_lowercase_exact_match_has_no_fuzzy_note(recommender: Recommender) -> None:
