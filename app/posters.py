@@ -40,7 +40,9 @@ def _is_logo(url: str) -> bool:
     return "logo" in path or path.endswith(".svg")
 
 
-def _get(client: httpx.Client, url: str, params: dict[str, str] | None = None) -> httpx.Response | None:
+def _get(
+    client: httpx.Client, url: str, params: dict[str, str] | None = None
+) -> httpx.Response | None:
     try:
         response = client.get(url, params=params)
     except httpx.HTTPError:

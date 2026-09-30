@@ -187,7 +187,7 @@ def _card(item: dict) -> None:
         st.markdown(
             (
                 f'<div class="ph" style="background:linear-gradient(165deg,'
-                f"hsl({hue},42%,28%),#141414);\">{safe}</div>"
+                f'hsl({hue},42%,28%),#141414);">{safe}</div>'
             ),
             unsafe_allow_html=True,
         )
@@ -203,7 +203,9 @@ def _card(item: dict) -> None:
     )
     genres = item.get("genres") or []
     if genres:
-        pills = "".join(f'<span class="pill">{html.escape(str(genre))}</span>' for genre in genres[:3])
+        pills = "".join(
+            f'<span class="pill">{html.escape(str(genre))}</span>' for genre in genres[:3]
+        )
         st.markdown(pills, unsafe_allow_html=True)
     reason = str(item.get("reason") or "")
     if reason:
