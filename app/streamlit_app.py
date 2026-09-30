@@ -2,24 +2,111 @@
 
 from __future__ import annotations
 
+import html
 import os
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlencode
 
 import httpx
 import plotly.graph_objects as go
 import streamlit as st
 
+from app.posters import lookup_poster
+
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000").rstrip("/")
-ACCENT = "#b20710"
-SERIES = ["#b20710", "#1f4e79", "#0f766e", "#b45309", "#6b7280"]
+ACCENT = "#E50914"
+MATCH = "#46d369"
+SERIES = ["#E50914", "#b3b3b3", "#46d369", "#564d4d", "#831010"]
 
-EXAMPLES = [
-    "crime drama thriller",
-    "kids family comedy",
-    "stand-up comedy",
+MOODS = [
+    "crime",
+    "drama",
+    "thriller",
+    "kids",
+    "family",
+    "comedy",
+    "romance",
+    "adventure",
+    "action",
+    "horror",
+    "documentary",
+    "mystery",
+    "anime",
+    "fantasy",
+    "sports",
+    "music",
+    "reality",
+    "stand-up",
 ]
+QUICK_TITLES = ["Breaking Bad", "Stranger Things", "The Irishman"]
 
-st.set_page_config(page_title="Netflix recommendations", layout="wide")
+st.set_page_config(page_title="Watch next", layout="wide", initial_sidebar_state="collapsed")
+
+_CSS = """
+<style>
+  .stApp { background: #141414; }
+  header[data-testid="stHeader"] { background: transparent; }
+  .block-container { padding-top: 1.2rem; max-width: 1180px; }
+  .hero {
+    padding: 8px 0 18px 0;
+    border-bottom: 1px solid #2a2a2a;
+    margin-bottom: 18px;
+  }
+  .eyebrow {
+    color: #E50914;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .hero h1 {
+    color: #ffffff;
+    font-size: 2.4rem;
+    line-height: 1.1;
+    margin: 6px 0 8px 0;
+    font-weight: 700;
+  }
+  .hero p { color: #b3b3b3; margin: 0; font-size: 1.02rem; }
+  div[data-testid="stImage"] img {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: 6px;
+    background: #1f1f1f;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  div[data-testid="stImage"] img:hover {
+    transform: scale(1.035);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  }
+  .ph {
+    aspect-ratio: 2 / 3;
+    border-radius: 6px;
+    display: flex;
+    align-items: flex-end;
+    padding: 14px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+  .match { color: #46d369; font-weight: 700; margin: 8px 0 0 0; font-size: 0.95rem; }
+  .card-title { color: #ffffff; font-weight: 700; margin: 2px 0 0 0; font-size: 1rem; }
+  .card-meta { color: #b3b3b3; margin: 2px 0 0 0; font-size: 0.78rem; }
+  .pill {
+    display: inline-block;
+    border: 1px solid #3a3a3a;
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin: 6px 4px 0 0;
+    color: #e5e5e5;
+    font-size: 0.72rem;
+  }
+  .reason { color: #d2d2d2; font-size: 0.78rem; line-height: 1.4; margin: 8px 0 4px 0; }
+  .fine { color: #808080; font-size: 0.78rem; }
+</style>
+"""
 
 
 def _error(message: str) -> None:
@@ -48,6 +135,33 @@ def _cached_get(path: str) -> dict:
     return body
 
 
+@st.cache_data(ttl=60 * 60 * 24, show_spinner=False)
+def _poster(title: str, content_type: str) -> str:
+    return lookup_poster(title, content_type or None) or ""
+
+
+def _warm_posters(results: list[dict]) -> None:
+    pairs = [(str(item.get("title") or ""), str(item.get("type") or "")) for item in results]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(lambda pair: lookup_poster(pair[0], pair[1] or None), pairs))
+
+
+def _hue(title: str) -> int:
+    return sum(ord(char) for char in title) % 360
+
+
+def _dark(figure: go.Figure) -> go.Figure:
+    figure.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font_color="#e5e5e5",
+        title_font_color="#ffffff",
+    )
+    figure.update_xaxes(gridcolor="#333333", zerolinecolor="#333333")
+    figure.update_yaxes(gridcolor="#333333", zerolinecolor="#333333")
+    return figure
+
+
 def _bars(names: list[str], values: list[int], title: str, x_title: str) -> go.Figure:
     figure = go.Figure(go.Bar(x=values, y=names, orientation="h", marker_color=ACCENT))
     figure.update_layout(
@@ -58,11 +172,46 @@ def _bars(names: list[str], values: list[int], title: str, x_title: str) -> go.F
         margin={"l": 20, "r": 20, "t": 48, "b": 40},
         height=420,
     )
-    return figure
+    return _dark(figure)
+
+
+def _card(item: dict) -> None:
+    title = str(item.get("title") or "Untitled")
+    content_type = str(item.get("type") or "")
+    url = _poster(title, content_type)
+    if url:
+        st.image(url, use_container_width=True)
+    else:
+        safe = html.escape(title)
+        hue = _hue(title)
+        st.markdown(
+            (
+                f'<div class="ph" style="background:linear-gradient(165deg,'
+                f"hsl({hue},42%,28%),#141414);\">{safe}</div>"
+            ),
+            unsafe_allow_html=True,
+        )
+    score = float(item.get("similarity") or 0.0)
+    percent = round(score * 100)
+    rating = item.get("rating") or "Unrated"
+    year = item.get("release_year") or ""
+    st.markdown(f'<p class="match">{percent}% Match</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="card-title">{html.escape(title)}</p>', unsafe_allow_html=True)
+    st.markdown(
+        f'<p class="card-meta">{html.escape(content_type)} · {year} · {html.escape(str(rating))}</p>',
+        unsafe_allow_html=True,
+    )
+    genres = item.get("genres") or []
+    if genres:
+        pills = "".join(f'<span class="pill">{html.escape(str(genre))}</span>' for genre in genres[:3])
+        st.markdown(pills, unsafe_allow_html=True)
+    reason = str(item.get("reason") or "")
+    if reason:
+        st.markdown(f'<p class="reason">{html.escape(reason)}</p>', unsafe_allow_html=True)
 
 
 def _render_results(payload: dict, heading: str) -> None:
-    st.subheader(heading)
+    st.markdown(f"### {heading}")
     if payload.get("resolved_from"):
         st.info(
             f"Showing results for **{payload['query_title']}**. You typed `{payload['resolved_from']}`."
@@ -71,53 +220,80 @@ def _render_results(payload: dict, heading: str) -> None:
     if not results:
         st.warning("No titles matched those filters.")
         return
-    for item in results:
-        with st.container(border=True):
-            left, right = st.columns([4, 1])
-            with left:
-                st.markdown(f"**{item['title']}**")
-                rating = item.get("rating") or "Unrated"
-                st.caption(f"{item['type']} · {item['release_year']} · {rating}")
-            with right:
-                st.metric("Similarity", f"{item['similarity']:.2f}")
-            st.progress(min(max(float(item["similarity"]), 0.0), 1.0))
-            genres = item.get("genres") or []
-            if genres:
-                st.write(" ".join(f"`{genre}`" for genre in genres))
-            st.write(item.get("reason") or "")
+    with st.spinner("Loading artwork..."):
+        _warm_posters(results)
+    per_row = 5
+    for start in range(0, len(results), per_row):
+        row = results[start : start + per_row]
+        columns = st.columns(per_row)
+        for column, item in zip(columns, row, strict=False):
+            with column:
+                _card(item)
+    st.markdown(
+        '<p class="fine">Artwork is loaded from TVMaze and Wikipedia when a still exists. '
+        "Netflix does not offer a free poster API. A coloured card means no picture was found. "
+        "Match % is cosine similarity, not a personal taste score.</p>",
+        unsafe_allow_html=True,
+    )
 
 
 def _recommend_tab() -> None:
+    st.caption("Start from a title already in the catalogue.")
+    if "catalogue_query" not in st.session_state:
+        st.session_state["catalogue_query"] = ""
+    st.write("Quick picks")
+    picks = st.columns(len(QUICK_TITLES))
+    for column, title in zip(picks, QUICK_TITLES, strict=True):
+        with column:
+            if st.button(title, key=f"quick-{title}", use_container_width=True):
+                st.session_state["catalogue_query"] = title
+                st.session_state["run_recommend"] = True
+
     query = st.text_input(
-        "Search the catalogue", placeholder="Try breaking bad or a close spelling"
+        "Search the catalogue",
+        key="catalogue_query",
+        placeholder="Try break bad, or a close spelling",
     )
     matches: list[dict] = []
     if query.strip():
         with st.spinner("Searching titles..."):
             response = _request("GET", "/titles?" + urlencode({"q": query, "limit": 20}))
         if response is None:
+            st.session_state.pop("run_recommend", None)
             return
         if response.status_code != 200:
+            st.session_state.pop("run_recommend", None)
             _error(f"Search failed ({response.status_code}).")
             return
         matches = response.json()
     labels = [f"{item['title']} ({item['type']}, {item['release_year']})" for item in matches]
+    if matches and query.strip().casefold() not in str(matches[0]["title"]).casefold():
+        st.caption(
+            f"Closest catalogue title is {matches[0]['title']}. "
+            "Recommend uses the title selected below."
+        )
     chosen = st.selectbox(
-        "Matching titles", labels, index=0 if labels else None, placeholder="Type a title above"
+        "Matching titles",
+        labels,
+        index=0 if labels else None,
+        placeholder="Type a title above",
     )
     selected = matches[labels.index(chosen)]["title"] if chosen and labels else query
 
-    col_n, col_type, col_year, col_flag = st.columns(4)
-    with col_n:
-        n = st.slider("How many", min_value=1, max_value=20, value=8)
-    with col_type:
-        content_type = st.selectbox("Type", ["Any", "Movie", "TV Show"])
-    with col_year:
-        min_year = st.slider("Released in or after", min_value=1925, max_value=2021, value=1925)
-    with col_flag:
-        exclude = st.toggle("Hide sequels and spin-offs", value=True)
+    with st.expander("Filters", expanded=False):
+        col_n, col_type, col_year, col_flag = st.columns(4)
+        with col_n:
+            n = st.slider("How many", min_value=1, max_value=20, value=10)
+        with col_type:
+            content_type = st.selectbox("Type", ["Any", "Movie", "TV Show"])
+        with col_year:
+            min_year = st.slider("Released in or after", min_value=1925, max_value=2021, value=1925)
+        with col_flag:
+            exclude = st.toggle("Hide sequels and spin-offs", value=True)
 
-    if st.button("Recommend", type="primary", disabled=not str(selected).strip()):
+    run = st.button("Recommend", type="primary", disabled=not str(selected).strip())
+    auto = st.session_state.pop("run_recommend", False)
+    if run or auto:
         body = {
             "title": selected,
             "n": n,
@@ -142,22 +318,51 @@ def _recommend_tab() -> None:
             _error(response.json().get("detail", f"Request failed ({response.status_code})."))
             return
         payload = response.json()
-        _render_results(payload, f"Because you asked about {payload['query_title']}")
-        st.caption(f"Model {payload['model_version']} · {payload['took_ms']} ms")
+        st.session_state["last_recommend"] = payload
+        st.session_state["last_recommend_ms"] = (
+            f"Model {payload['model_version']} · {payload['took_ms']} ms"
+        )
+    payload = st.session_state.get("last_recommend")
+    if payload:
+        _render_results(payload, f"More like {payload['query_title']}")
+        st.caption(st.session_state.get("last_recommend_ms", ""))
+
+
+def _toggle_mood(mood: str) -> None:
+    words = str(st.session_state.get("taste", "")).split()
+    key = mood.casefold()
+    if key in {word.casefold() for word in words}:
+        words = [word for word in words if word.casefold() != key]
+    else:
+        words.append(mood)
+    st.session_state["taste"] = " ".join(words)
 
 
 def _taste_tab() -> None:
-    st.write("Describe a mood. The model only knows words that appear in the catalogue.")
+    st.write("Pick one or more moods. They combine in the box, and you can still type your own.")
     if "taste" not in st.session_state:
-        st.session_state["taste"] = EXAMPLES[0]
-    cols = st.columns(len(EXAMPLES))
-    for column, example in zip(cols, EXAMPLES, strict=True):
-        with column:
-            if st.button(example, key=f"ex-{example}"):
-                st.session_state["taste"] = example
-    text = st.text_area("Your description", key="taste", height=100)
-    n = st.slider("How many", min_value=1, max_value=20, value=8, key="taste-n")
-    if st.button("Find titles", type="primary"):
+        st.session_state["taste"] = ""
+    chosen = {word.casefold() for word in str(st.session_state.get("taste", "")).split()}
+    per_row = 6
+    for start in range(0, len(MOODS), per_row):
+        columns = st.columns(per_row)
+        for column, mood in zip(columns, MOODS[start : start + per_row], strict=False):
+            with column:
+                if st.button(
+                    mood,
+                    key=f"mood-{mood}",
+                    type="primary" if mood.casefold() in chosen else "secondary",
+                    use_container_width=True,
+                ):
+                    _toggle_mood(mood)
+    text = st.text_area(
+        "Your description",
+        key="taste",
+        height=80,
+        placeholder="crime drama, or a mood from the list",
+    )
+    n = st.slider("How many", min_value=1, max_value=20, value=10, key="taste-n")
+    if st.button("Find titles", type="primary", disabled=not str(text).strip()):
         with st.spinner("Matching that description..."):
             response = _request("POST", "/recommend/text", {"query": text, "n": n})
         if response is None:
@@ -167,8 +372,14 @@ def _taste_tab() -> None:
             _error(detail if isinstance(detail, str) else str(detail))
             return
         payload = response.json()
+        st.session_state["last_taste"] = payload
+        st.session_state["last_taste_ms"] = (
+            f"Model {payload['model_version']} · {payload['took_ms']} ms"
+        )
+    payload = st.session_state.get("last_taste")
+    if payload:
         _render_results(payload, "Closest titles")
-        st.caption(f"Model {payload['model_version']} · {payload['took_ms']} ms")
+        st.caption(st.session_state.get("last_taste_ms", ""))
 
 
 def _explore_tab() -> None:
@@ -192,7 +403,8 @@ def _explore_tab() -> None:
             x=[row["year"] for row in years],
             y=[row["count"] for row in years],
             mode="lines+markers",
-            line={"color": ACCENT},
+            line={"color": ACCENT, "width": 3},
+            marker={"color": "#ffffff", "size": 6},
         )
     )
     year_fig.update_layout(
@@ -201,7 +413,7 @@ def _explore_tab() -> None:
         yaxis_title="Titles",
         height=360,
     )
-    st.plotly_chart(year_fig, use_container_width=True)
+    st.plotly_chart(_dark(year_fig), use_container_width=True)
 
     left, right = st.columns(2)
     with left:
@@ -210,11 +422,11 @@ def _explore_tab() -> None:
                 labels=["Movie", "TV Show"],
                 values=[stats["n_movies"], stats["n_tv_shows"]],
                 marker={"colors": SERIES[:2]},
-                hole=0.45,
+                hole=0.55,
             )
         )
         split.update_layout(title="Movies and TV shows", height=380)
-        st.plotly_chart(split, use_container_width=True)
+        st.plotly_chart(_dark(split), use_container_width=True)
     with right:
         ratings = stats["ratings"]
         st.plotly_chart(
@@ -256,13 +468,13 @@ def _explore_tab() -> None:
         go.Bar(
             x=[f"{int(row['bin_start'])}–{int(row['bin_end'])} min" for row in bins],
             y=[row["count"] for row in bins],
-            marker_color="#1f4e79",
+            marker_color=ACCENT,
         )
     )
     runtime.update_layout(
         title="Movie runtime", xaxis_title="Runtime bin", yaxis_title="Movies", height=360
     )
-    st.plotly_chart(runtime, use_container_width=True)
+    st.plotly_chart(_dark(runtime), use_container_width=True)
 
 
 def _about_tab() -> None:
@@ -301,18 +513,26 @@ def _about_tab() -> None:
     st.markdown(
         """
 - There is no viewing history, so the model cannot learn that people who watched one title watched another.
-- This extract has no cast and no synopsis. A lot of 'similarity' is shared genre labels.
+- This extract has no cast and no synopsis. A lot of similarity is shared genre labels.
 - Genre precision uses those same labels, so a high score is a sanity check, not proof the list is good.
 - Some country values are wrong (titles tagged Pakistan that are not Pakistani). Country weight is 0 for that reason.
 - Stop-word removal is the English list. Non-English descriptions, if you add them later, will be handled badly.
 - Popular genres show up in many lists. Coverage and the Gini coefficient in the evaluation report measure that.
+- Poster art is looked up live. A missing picture is a failed lookup, not a claim that the title has no art.
         """
     )
 
 
-st.title("Netflix content recommendations")
-st.caption(
-    "Similar titles from the catalogue, with a reason for each one. Content-based — not personalised."
+st.markdown(_CSS, unsafe_allow_html=True)
+st.markdown(
+    """
+<div class="hero">
+  <p class="eyebrow">Catalogue</p>
+  <h1>Find something to watch</h1>
+  <p>Similar titles from this catalogue, each with a reason. Content-based — not your watch history.</p>
+</div>
+""",
+    unsafe_allow_html=True,
 )
 
 health = _request("GET", "/health")
